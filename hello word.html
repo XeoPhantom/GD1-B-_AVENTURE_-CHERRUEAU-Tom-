@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" /><title>Whiskey</title>
+        <script
+        src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+        <style type="text/css"> body { margin: 0; }</style>
+    </head>
+
+    <body>
+        <script type="text/javascript">
+            var config = {
+                type: Phaser.AUTO,
+                width: 1000, height: 1800,
+                physics: {
+                    default: 'arcade',
+                    arcade: {
+                        gravity: { y: 400 },
+                        debug: false
+                    }
+                },
+                scene: {preload: preload, create: create, update: update }
+            };
+            new Phaser.Game(config);
+            function preload(){
+                this.load.image('star', 'assets/star.png');
+                this.load.image('ground', 'assets/platform.png');
+                this.load.image('sky', 'assets/sky.png');
+                this.load.image('bomb', 'assets/bomb.png');
+                this.load.image('Montagne', 'assets/Montagne-PNG.png');
+                this.load.spritesheet('perso','assets/perso.png',
+                this.load.image('bullet1', 'assets/bomb.png');
+                { frameWidth: 32, frameHeight: 48 });
+            }
+
+            var platforms;
+
+            //commande
+            var cursors;
+            // état joueur
+
+            var player;
+            var stars;
+            var gameOver;
+            gameOver=false;
+            score=0;
+
+            // score
+            var score;
+            var scoreText;
+
+            //vitesse
+            var gravite_joueur = 000;
+            var vitesse_saut = 300;
+
+            //camera
+            var iter = 0;
+            var horizontalCamera;
+            var verticalCamera;
+            var circularCamera;
+            //tir
+            var bullets;
+            var speed;
+            var stats;
+            var lastFired = 0;
+            var isDown = false;
+            var mouseX = 0;
+            var mouseY = 0;
+
+var game = new Phaser.Game(config);
+
+            class Example extends Phaser.Scene
+{
+    constructor ()
+    {
+        super();
+    }
+}
+
+
+
+            function create(){
+                this.add.image(400, 300, 'sky');
+                this.add.image(4000, 3000, 'star');
+                platforms = this.physics.add.staticGroup();
+                platforms.create(400, 1050, 'ground').setScale(2).refreshBody();
+                player = this.physics.add.sprite(100, 450, 'perso');
+                player.setBounce(0.02);
+                player.setCollideWorldBounds(true);
+                this.physics.add.collider(player, platforms);
+                this.anims.create({
+                    key: 'left',
+                    frames: this.anims.generateFrameNumbers('perso', {start:0,end:3}),
+                    frameRate: 10,
+                    repeat: -1
+                });
+                this.anims.create({
+                    key: 'turn',
+                    frames: [ { key: 'perso', frame: 4 } ],
+                    frameRate: 20
+                });
+                this.anims.create({
+                    key: 'right',
+                    frames: this.anims.generateFrameNumbers('perso', {start:5,end:8}),
+                    frameRate: 10,
+                    repeat: -1
+                });
+
+                cursors = this.input.keyboard.createCursorKeys();
+            
+                scoreText=this.add.text(16,16,'score: 0',{fontSize:'32px',fill:'#000'});
+                //affiche un texte à l’écran, pour le score
+                stars = this.physics.add.group({
+                    key: 'star', repeat: 11,
+                    setXY: { x: 50, y: 0, stepX: 700 }
+                });
+                stars.children.iterate(function (child) {
+                    child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+                }); //chaque étoile va rebondir un peu différemment
+                this.physics.add.collider(stars, platforms);
+                //et collisionne avec les plateformes
+                this.physics.add.overlap(player, stars, collectStar, null, this);
+                //le contact perso/étoile ne génère pas de collision (overlap)
+                //mais en revanche cela déclenche une fonction collectStar
+                this.physics.world.setBounds(0,0,5760,1080);
+                this.cameras.main.setBounds(0,0,5760,1080);
+                this.cameras.main.startFollow(player,false,1,1,0,150);
+
+            }
+            function update(){
+
+                if (gameOver){return;}
+                
+                if (cursors.left.isDown){ //si la touche gauche est appuyée
+                    player.setVelocityX(-160); //alors vitesse négative en X
+                    player.anims.play('left', true); //et animation => gauche
+                }
+                else if (cursors.right.isDown){ //sinon si la touche droite est appuyée
+                    player.setVelocityX(160); //alors vitesse positive en X
+                    player.anims.play('right', true); //et animation => droite
+                }
+                else{ // sinon
+                    player.setVelocityX(0); //vitesse nulle
+                    player.anims.play('turn'); //animation fait face caméra
+                }
+                if (cursors.up.isDown && player.body.touching.down){
+                    //si touche haut appuyée ET que le perso touche le sol
+                    player.setVelocityY(-330); //alors vitesse verticale négative
+                    //(on saute)
+                }
+                
+                bombs = this.physics.add.group();
+                this.physics.add.collider(bombs, platforms);
+                this.physics.add.collider(player, bombs, hitBomb, null, this);
+            }
+
+            function collectStar(player, star){
+                star.disableBody(true, true); // l’étoile disparaît
+                score += 10; //augmente le score de 10
+                scoreText.setText('Score: ' + score); //met à jour l’affichage du score
+                if (stars.countActive(true) === 0){// si toutes les étoiles sont prises
+                    stars.children.iterate(function (child) {
+                        child.enableBody(true, child.x, 0, true, true);
+                    }); // on les affiche toutes de nouveau
+                    var x = (player.x < 400) ? Phaser.Math.Between(450, 1500) :
+                    Phaser.Math.Between(0, 1000);
+                    // si le perso est à gauche de l’écran, on met une bombe à droite
+                    // si non, on la met à gauche de l’écran
+                    var bomb = bombs.create(x, 16, 'bomb');
+                    bomb.setBounce(1);
+                    bomb.setCollideWorldBounds(true);
+                    bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+                    bomb.allowGravity = false; //elle n’est pas soumise à la gravité
+                }
+
+            }
+
+            function hitBomb(player, bomb){
+                this.physics.pause();
+                player.setTint(0xff0000);
+                player.anims.play('turn');
+                gameOver = true;
+            }
+// movingPlatform = this.physics.add.image(400, 400, 'ground');
+//movingPlatform.setImmovable(true);
+//movingPlatform.body.allowGravity = false;
+//movingPlatform.setVelocityX(50);
+        </script>
+    </body>
+</html>
+#bullet test 
+
+var bullets;
+var ship;
+var speed;
+var stats;
+var lastFired = 0;
+var isDown = false;
+var mouseX = 0;
+var mouseY = 0;
+
+var game = new Phaser.Game(config);
+
+function preload ()
+{
+    this.load.image('ship', 'assets/sprites/ship.png');
+    this.load.image('bullet1', 'assets/sprites/bullets/bullet11.png');
+}
+
+function create ()
+{
+    var Bullet = new Phaser.Class({
+
+        Extends: Phaser.GameObjects.Image,
+
+        initialize:
+
+        function Bullet (scene)
+        {
+            Phaser.GameObjects.Image.call(this, scene, 0, 0, 'bullet1');
+
+            this.incX = 0;
+            this.incY = 0;
+            this.lifespan = 0;
+
+            this.speed = Phaser.Math.GetSpeed(600, 1);
+        },
+
+        fire: function (x, y)
+        {
+            this.setActive(true);
+            this.setVisible(true);
+
+            //  Bullets fire from the middle of the screen to the given x/y
+            this.setPosition(400, 300);
+
+            var angle = Phaser.Math.Angle.Between(x, y, 400, 300);
+
+            this.setRotation(angle);
+
+            this.incX = Math.cos(angle);
+            this.incY = Math.sin(angle);
+
+            this.lifespan = 1000;
+        },
+
+        update: function (time, delta)
+        {
+            this.lifespan -= delta;
+
+            this.x -= this.incX * (this.speed * delta);
+            this.y -= this.incY * (this.speed * delta);
+
+            if (this.lifespan <= 0)
+            {
+                this.setActive(false);
+                this.setVisible(false);
+            }
+        }
+
+    });
+
+    bullets = this.add.group({
+        classType: Bullet,
+        maxSize: 50,
+        runChildUpdate: true
+    });
+
+    ship = this.add.sprite(400, 300, 'ship').setDepth(1);
+
+    this.input.on('pointerdown', function (pointer) {
+
+        isDown = true;
+        mouseX = pointer.x;
+        mouseY = pointer.y;
+
+    });
+
+    this.input.on('pointermove', function (pointer) {
+
+        mouseX = pointer.x;
+        mouseY = pointer.y;
+
+    });
+
+    this.input.on('pointerup', function (pointer) {
+
+        isDown = false;
+
+    });
+
+}
+
+function update (time, delta)
+{
+
+    if (isDown && time > lastFired)
+    {
+        var bullet = bullets.get();
+
+        if (bullet)
+        {
+            bullet.fire(mouseX, mouseY);
+
+            lastFired = time + 50;
+        }
+    }
+
+    ship.setRotation(Phaser.Math.Angle.Between(mouseX, mouseY, ship.x, ship.y) - Math.PI / 2);
+
+}
+
+    #Mini map test
+class Example extends Phaser.Scene
+    {
+        constructor ()
+        {
+            super();
+        }
+    
+        preload () 
+        {
+            this.load.image('CherilPerils', 'assets/tests/camera/CherilPerils.png');
+            this.iter = 0;
+        }
+    
+        create () 
+        {
+            this.image = this.add.image(0, 0, 'CherilPerils')
+                .setOrigin(0);
+            this.smallCamera = this.cameras.add(570, 30, 200, 200);
+        }
+    
+        update () 
+        {
+            const halfWidth = this.image.texture.source[0].width / 2;
+            const quarterWidth = halfWidth / 2;
+            const halfHeight = this.image.texture.source[0].height / 2;
+            const quarterHeight = halfHeight / 2;
+        
+            this.smallCamera.scrollX = halfWidth + Math.cos(this.iter) * halfWidth;
+            this.iter += 0.02;
+        }
+    }
+    
+    const config = {
+        type: Phaser.WEBGL,
+        parent: 'phaser-example',
+        width: 800,
+        height: 600,
+        scene: [ Example ]
+    };
+    
+    const game = new Phaser.Game(config);
