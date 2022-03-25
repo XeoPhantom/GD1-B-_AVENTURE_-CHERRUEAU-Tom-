@@ -11,8 +11,8 @@
         <script type="text/javascript">
         var config = {
     type: Phaser.WEBGL,
-    width: 800,
-    height: 600,
+    width: 1900,
+    height: 400,
     backgroundColor: '#2d2d2d',
     parent: 'phaser-example',
     scene: {
@@ -47,12 +47,12 @@ function create ()
     this.anims.create({
     key: 'left',
                     frames: this.anims.generateFrameNumbers('ship', {start:0,end:3}),
-                    frameRate: 9,
+                    frameRate: 10,
                     repeat: -1
                 });
                 this.anims.create({
                     key: 'turn',
-                    frames: [ { key: 'ship', frame: 3 } ],
+                    frames: [ { key: 'ship', frame: 4 } ],
                     frameRate: 20
                 });
                 this.anims.create({
@@ -118,7 +118,7 @@ function create ()
         runChildUpdate: true
     });
 
-    ship = this.add.sprite(100, 300, 'ship').setDepth(1);
+    ship = this.add.sprite(400, 300, 'ship').setDepth(1);
 
     this.input.on('pointerdown', function (pointer) {
 
